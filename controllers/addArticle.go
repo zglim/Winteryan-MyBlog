@@ -5,6 +5,7 @@ import (
 	"hello/models"
 	html "html/template"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -28,28 +29,31 @@ func (c *AddarticleController) Add() {
 		Blog.Type = strings.TrimSpace(c.GetString("type"))
 		Blog.Status = strings.TrimSpace(c.GetString("status"))
 		Blog.Auth = strings.TrimSpace(c.GetString("auth"))
-		file, image, err := c.GetFile("images")
+		file, header, err := c.GetFile("images")
 		if err != nil {
-			flash.Error("保存Blog失败！原因：" + err.Error())
+			flash.Error("保存Blog失败！原因：%s", err.Error())
 			flash.Store(&c.Controller)
 			c.redirect(beego.URLFor("AddarticleController.Add"))
 			return
 		}
 		defer file.Close()
-		Blog.Imgurl = "static/upload/" + image.Filename
-		Blog.Introduction = strings.TrimSpace(c.GetString("introduction"))
-		Blog.Content = strings.TrimSpace(c.GetString("content"))
-		Blog.Lastupdate = time.Now()
-		Blog.Createtime = time.Now()
-		err1 := c.SaveToFile("images", "static/upload/"+image.Filename) // 保存位置在 static/upload, 没有文件夹要先创建
-		if err1 != nil {
-			flash.Error("保存Blog失败！原因：" + err1.Error())
+
+		result, err := handleUpload(file, header)
+		if err != nil {
+			flash.Error("保存Blog失败！原因：%s", err.Error())
 			flash.Store(&c.Controller)
 			c.redirect(beego.URLFor("AddarticleController.Add"))
 			return
 		}
+		Blog.Imgurl = result.RelPath
+		Blog.Introduction = strings.TrimSpace(c.GetString("introduction"))
+		Blog.Content = strings.TrimSpace(c.GetString("content"))
+		Blog.Lastupdate = time.Now()
+		Blog.Createtime = time.Now()
 		if _, err := models.BlogAdd(Blog); err != nil {
-			flash.Error("保存Blog失败！原因：" + err.Error())
+			// DB insert failed – clean up the uploaded file to avoid orphans.
+			os.Remove(result.AbsPath)
+			flash.Error("保存Blog失败！原因：%s", err.Error())
 			flash.Store(&c.Controller)
 			c.redirect(beego.URLFor("AddarticleController.Add"))
 			return
@@ -104,27 +108,27 @@ func (c *AddarticleController) Update() {
 		Blog.Subject = c.GetString("subject")
 		Blog.Title = c.GetString("title")
 		Blog.Type = c.GetString("type")
-		file, image, err := c.GetFile("images")
+
+		// Default: keep old image.
+		Blog.Imgurl = oldblog.Imgurl
+
+		file, header, err := c.GetFile("images")
 		if err == nil {
 			defer file.Close()
-			Blog.Imgurl = "static/upload/" + image.Filename
-			fmt.Println(Blog.Imgurl, oldblog.Imgurl)
-			if oldblog.Imgurl != Blog.Imgurl {
-				err1 := c.SaveToFile("images", "static/upload/"+image.Filename) // 保存位置在 static/upload, 没有文件夹要先创建
-				if err1 != nil {
-					flash.Error("更新Blog失败！原因：" + err1.Error())
-					flash.Store(&c.Controller)
-					c.Data["blog"] = oldblog
-					c.TplName = "backstage/addarticle.html"
-					return
-				}
+			result, uploadErr := handleUpload(file, header)
+			if uploadErr != nil {
+				flash.Error("更新Blog失败！原因：%s", uploadErr.Error())
+				flash.Store(&c.Controller)
+				c.Data["blog"] = oldblog
+				c.TplName = "backstage/addarticle.html"
+				return
 			}
-
-		} else {
-			Blog.Imgurl = oldblog.Imgurl
+			Blog.Imgurl = result.RelPath
 		}
+		// No file uploaded (err != nil) → Blog.Imgurl remains oldblog.Imgurl.
+
 		if err := Blog.Update(); err != nil {
-			flash.Error("更新Blog失败！原因：" + err.Error())
+			flash.Error("更新Blog失败！原因：%s", err.Error())
 			flash.Store(&c.Controller)
 			c.Data["blog"] = oldblog
 			c.TplName = "backstage/addarticle.html"
@@ -158,7 +162,7 @@ func (c *AddarticleController) Delete() {
 	blog.Status = "private"
 	err := blog.Update()
 	if err != nil {
-		flash.Error("修改失败！原因：" + err.Error())
+		flash.Error("修改失败！原因：%s", err.Error())
 		flash.Store(&c.Controller)
 		c.redirect(beego.URLFor("AddarticleController.List"))
 	}
