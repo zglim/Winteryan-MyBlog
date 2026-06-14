@@ -23,6 +23,7 @@
 									{{if .flash.error}}
 						   				<h5 class="error">提示:{{.flash.error}}</h5>
 						    		{{end}}
+														{{if .banner}}
 									<form name="form1" id="form1" method="post" action="/updateBanner" enctype="multipart/form-data">
 									<div class="row">
 											<div class="col-md-12">
@@ -60,6 +61,9 @@
 										</div>
 									</div>
 									</form>
+									{{else}}
+									<h5 class="error">提示:未找到对应的Banner记录。</h5>
+									{{end}}
 								</div>
 							</div>
 						</div>

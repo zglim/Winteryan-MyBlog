@@ -81,19 +81,23 @@ func (c *AddarticleController) List() {
 }
 
 func (c *AddarticleController) Update() {
+	list := beego.URLFor("AddarticleController.List")
 	if c.isGet() {
-		id, _ := c.GetInt("id")
-		fmt.Println(id)
-		blog, _ := models.GetBlogById(id)
+		blog, ok := c.requireBlog(list)
+		if !ok {
+			return
+		}
 		c.Data["blog"] = blog
 		c.TplName = "backstage/addarticle.html"
 	}
 	if c.isPost() {
+		oldblog, ok := c.requireBlog(list)
+		if !ok {
+			return
+		}
 		Blog := new(models.Blog)
-		id, _ := c.GetInt("id")
 		flash := beego.NewFlash()
-		oldblog, _ := models.GetBlogById(id)
-		Blog.Id = id
+		Blog.Id = oldblog.Id
 		Blog.Auth = c.GetString("auth")
 		Blog.Catalogid = c.GetString("catalogid")
 		Blog.Content = c.GetString("content")
@@ -108,7 +112,6 @@ func (c *AddarticleController) Update() {
 		if err == nil {
 			defer file.Close()
 			Blog.Imgurl = "static/upload/" + image.Filename
-			fmt.Println(Blog.Imgurl, oldblog.Imgurl)
 			if oldblog.Imgurl != Blog.Imgurl {
 				err1 := c.SaveToFile("images", "static/upload/"+image.Filename) // 保存位置在 static/upload, 没有文件夹要先创建
 				if err1 != nil {
@@ -133,7 +136,13 @@ func (c *AddarticleController) Update() {
 
 		flash.Error("更新成功！")
 		flash.Store(&c.Controller)
-		newblog, _ := models.GetBlogById(id)
+		// The row was just persisted, so it must exist; re-read it to show the
+		// stored values, but fall back to the in-memory copy if the re-read
+		// fails so the template never receives a nil object.
+		newblog, err2 := models.GetBlogById(Blog.Id)
+		if err2 != nil || newblog == nil {
+			newblog = Blog
+		}
 		c.Data["blog"] = newblog
 		c.Data["flag"] = "1"
 		c.TplName = "backstage/addarticle.html"
@@ -142,27 +151,30 @@ func (c *AddarticleController) Update() {
 
 }
 func (c *AddarticleController) Look() {
-	id, _ := c.GetInt("id")
-	fmt.Println(id)
-	blog, _ := models.GetBlogById(id)
+	blog, ok := c.requireBlog(beego.URLFor("AddarticleController.List"))
+	if !ok {
+		return
+	}
 	c.Data["blog"] = blog
 	c.Data["flag"] = "1"
 	c.TplName = "backstage/addarticle.html"
 
 }
 func (c *AddarticleController) Delete() {
-	id, _ := c.GetInt("id")
-	fmt.Println(id)
+	list := beego.URLFor("AddarticleController.List")
+	blog, ok := c.requireBlog(list)
+	if !ok {
+		return
+	}
 	flash := beego.NewFlash()
-	blog, _ := models.GetBlogById(id)
 	blog.Status = "private"
-	err := blog.Update()
-	if err != nil {
+	if err := blog.Update(); err != nil {
 		flash.Error("修改失败！原因：" + err.Error())
 		flash.Store(&c.Controller)
-		c.redirect(beego.URLFor("AddarticleController.List"))
+		c.redirect(list)
+		return
 	}
 	flash.Error("修改成功！")
 	flash.Store(&c.Controller)
-	c.redirect(beego.URLFor("AddarticleController.List"))
+	c.redirect(list)
 }
