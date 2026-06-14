@@ -38,8 +38,8 @@
 			<td>{{$elem.Title}}</td>
 			<td>{{$elem.Auth}}</td>
 			<td>{{$elem.Keywords}}</td>
-			<td>{{$elem.Introduction}}</td>
 			<td>{{$elem.Subject}}</td>
+			<td>{{$elem.Introduction}}</td>
 			<td>{{$elem.Status}}</td>
 			<td>{{$elem.Catalogid}}</td>
 			<td>{{$elem.Type}}</td>
@@ -47,44 +47,21 @@
 			<td>{{$elem.Lastupdate}}</td>
 			<td>
                 <div class="btn-group">
-					<a class="btn btn-primary" href="/lookArticle?id="><i class=" icon_search"></i><p class = "idnum" style="display:none">{{$elem.Id}}</p></a>
-                    <a class="btn btn-primary" href="/updateArticle?id="><i class="icon_pencil-edit"></i><p class = "idnum" style="display:none">{{$elem.Id}}</p></a>
-                    <a class="btn btn-danger" href="/deleteArticle?id="><i class="icon_close_alt2"></i><p class = "idnum" style="display:none">{{$elem.Id}}</p></a>
+					<a class="btn btn-primary" href="/lookArticle?id={{$elem.Id}}"><i class=" icon_search"></i></a>
+                    <a class="btn btn-primary" href="/updateArticle?id={{$elem.Id}}"><i class="icon_pencil-edit"></i></a>
+                    <a class="btn btn-danger" href="/deleteArticle?id={{$elem.Id}}"><i class="icon_close_alt2"></i></a>
 				</div>
             </td>
-			
+
 		</tr>
 	{{end}}
 	</tbody>
 </table>
 <ul class="pagination">
-	<li><a href="#">&laquo;</a></li>
+	<li{{if eq .CurrentPage 1}} class="disabled"{{end}}><a href="/listArticle?page={{.PrevPage}}">&laquo;</a></li>
 	{{range .Pages}}
-	<li class="current">{{.}}</li>
+	<li{{if .Active}} class="{{.Active}}"{{end}}><a href="{{.URL}}">{{.Num}}</a></li>
 	{{end}}
-	<li><a href="#">&raquo;</a></li>
+	<li{{if eq .CurrentPage .TotalPages}} class="disabled"{{end}}><a href="/listArticle?page={{.NextPage}}">&raquo;</a></li>
 </ul>
-<script>
-function getUrlParam(name) {
-    var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
-    var r = window.location.search.substr(1).match(reg);  //匹配目标参数
-    if (r != null) return unescape(r[2]); return null; //返回参数值
-}
-$(document).ready(function(){
-	var page = getUrlParam("page");
-  	$(".current").each(function(){
-		if($(this).text()==page){
-			$(this).addClass("active");
-		}
-		if(page==null){
-			if($(this).text()=="1"){
-				$(this).addClass("active");
-			}
-		}
-	});
-	$(".btn").each(function(){
-		 $(this).attr("href",$(this).attr("href")+$(this).children("p.idnum").text()); 	
-	});
-});
-</script>
 {{end}}

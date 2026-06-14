@@ -37,7 +37,7 @@ func (c *LoginController) Login() {
 			fmt.Println(beego.URLFor("AddarticleController.Add") + "+++++++++++++++++++++++++")
 			c.redirect(beego.URLFor("BackstageController.Index"))
 		} else {
-			flash.Error("输入信息有误，或账户已失效")
+			flash.Error("%s", "输入信息有误，或账户已失效")
 			c.Data["error"] = "输入信息有误，或账户已失效"
 			flash.Store(&c.Controller)
 			c.TplName = "backstage/login.html"

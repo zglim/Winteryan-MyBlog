@@ -39,7 +39,7 @@ func (c *BannerController) Update() {
 		if oldBanner.Imgurl != newbanner.Imgurl {
 			err1 := c.SaveToFile("images", "static/upload/"+image.Filename) // 保存位置在 static/upload, 没有文件夹要先创建
 			if err1 != nil {
-				flash.Error("更新Banner失败！原因：" + err1.Error())
+				flash.Error("%s", "更新Banner失败！原因："+err1.Error())
 				flash.Store(&c.Controller)
 				c.Data["banner"] = oldBanner
 				c.TplName = "backstage/banner.html"
@@ -51,14 +51,14 @@ func (c *BannerController) Update() {
 		newbanner.Imgurl = oldBanner.Imgurl
 	}
 	if err := newbanner.Update(); err != nil {
-		flash.Error("更新Banner失败！原因：" + err.Error())
+		flash.Error("%s", "更新Banner失败！原因："+err.Error())
 		flash.Store(&c.Controller)
 		c.Data["banner"] = oldBanner
 		c.TplName = "backstage/banner.html"
 		return
 	}
 
-	flash.Error("更新成功！")
+	flash.Error("%s", "更新成功！")
 	flash.Store(&c.Controller)
 	c.Data["banner"] = newbanner
 	c.TplName = "backstage/banner.html"
