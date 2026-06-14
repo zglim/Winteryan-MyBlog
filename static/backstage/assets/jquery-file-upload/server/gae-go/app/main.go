@@ -9,6 +9,9 @@
  * http://www.opensource.org/licenses/MIT
  */
 
+//go:build ignore
+// +build ignore
+
 package app
 
 import (
