@@ -65,9 +65,17 @@ func (self *BaseController) auth() {
 	}
 }
 
+// getClientIp returns the normalized client IP used for the auth cookie
+// signature. It shares libs.ClientIP with the login flow so the IP signed when
+// issuing the cookie matches the IP checked when verifying it, even behind a
+// reverse proxy (X-Forwarded-For / X-Real-IP) or over IPv6.
 func (self *BaseController) getClientIp() string {
-	s := strings.Split(self.Ctx.Request.RemoteAddr, ":")
-	return s[0]
+	req := self.Ctx.Request
+	return libs.ClientIP(
+		req.Header.Get("X-Forwarded-For"),
+		req.Header.Get("X-Real-IP"),
+		req.RemoteAddr,
+	)
 }
 
 // 重定向

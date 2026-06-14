@@ -1,3 +1,10 @@
+//go:build ignore
+
+// NOTE: This is a vendored, standalone Google App Engine sample shipped with
+// the jQuery-File-Upload static asset. It is not part of this application and
+// depends on the unavailable "appengine" packages, so it is excluded from the
+// build (and from `go test ./...`) via the constraint above.
+
 /*
  * jQuery File Upload Plugin GAE Go Example 3.0
  * https://github.com/blueimp/jQuery-File-Upload
