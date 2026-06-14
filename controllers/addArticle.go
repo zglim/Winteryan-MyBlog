@@ -30,7 +30,7 @@ func (c *AddarticleController) Add() {
 		Blog.Auth = strings.TrimSpace(c.GetString("auth"))
 		file, image, err := c.GetFile("images")
 		if err != nil {
-			flash.Error("保存Blog失败！原因：" + err.Error())
+			flash.Error("%s", "保存Blog失败！原因：" + err.Error())
 			flash.Store(&c.Controller)
 			c.redirect(beego.URLFor("AddarticleController.Add"))
 			return
@@ -43,13 +43,13 @@ func (c *AddarticleController) Add() {
 		Blog.Createtime = time.Now()
 		err1 := c.SaveToFile("images", "static/upload/"+image.Filename) // 保存位置在 static/upload, 没有文件夹要先创建
 		if err1 != nil {
-			flash.Error("保存Blog失败！原因：" + err1.Error())
+			flash.Error("%s", "保存Blog失败！原因：" + err1.Error())
 			flash.Store(&c.Controller)
 			c.redirect(beego.URLFor("AddarticleController.Add"))
 			return
 		}
 		if _, err := models.BlogAdd(Blog); err != nil {
-			flash.Error("保存Blog失败！原因：" + err.Error())
+			flash.Error("%s", "保存Blog失败！原因：" + err.Error())
 			flash.Store(&c.Controller)
 			c.redirect(beego.URLFor("AddarticleController.Add"))
 			return
@@ -112,7 +112,7 @@ func (c *AddarticleController) Update() {
 			if oldblog.Imgurl != Blog.Imgurl {
 				err1 := c.SaveToFile("images", "static/upload/"+image.Filename) // 保存位置在 static/upload, 没有文件夹要先创建
 				if err1 != nil {
-					flash.Error("更新Blog失败！原因：" + err1.Error())
+					flash.Error("%s", "更新Blog失败！原因：" + err1.Error())
 					flash.Store(&c.Controller)
 					c.Data["blog"] = oldblog
 					c.TplName = "backstage/addarticle.html"
@@ -124,7 +124,7 @@ func (c *AddarticleController) Update() {
 			Blog.Imgurl = oldblog.Imgurl
 		}
 		if err := Blog.Update(); err != nil {
-			flash.Error("更新Blog失败！原因：" + err.Error())
+			flash.Error("%s", "更新Blog失败！原因：" + err.Error())
 			flash.Store(&c.Controller)
 			c.Data["blog"] = oldblog
 			c.TplName = "backstage/addarticle.html"
@@ -158,7 +158,7 @@ func (c *AddarticleController) Delete() {
 	blog.Status = "private"
 	err := blog.Update()
 	if err != nil {
-		flash.Error("修改失败！原因：" + err.Error())
+		flash.Error("%s", "修改失败！原因：" + err.Error())
 		flash.Store(&c.Controller)
 		c.redirect(beego.URLFor("AddarticleController.List"))
 	}

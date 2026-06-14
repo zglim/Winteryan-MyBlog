@@ -10,6 +10,12 @@ import (
 	"github.com/astaxie/beego"
 )
 
+// getClientIp 统一走 libs.GetClientIP，保证登录写 cookie 与后续校验
+// 使用完全相同的 IP 归一化逻辑。
+func (self *BaseController) getClientIp() string {
+	return libs.GetClientIP(self.Ctx.Request)
+}
+
 type BaseController struct {
 	beego.Controller
 	controllerName string
@@ -63,11 +69,6 @@ func (self *BaseController) auth() {
 	if self.userId == 0 && (self.actionName != "login") {
 		self.redirect(beego.URLFor("LoginController.Login"))
 	}
-}
-
-func (self *BaseController) getClientIp() string {
-	s := strings.Split(self.Ctx.Request.RemoteAddr, ":")
-	return s[0]
 }
 
 // 重定向
