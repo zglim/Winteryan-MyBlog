@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"hello/models"
 	html "html/template"
 	"math"
@@ -14,17 +13,18 @@ type MainController struct {
 	beego.Controller
 }
 
-func (c *MainController) Get() {
+// articlesPerColumn is how many articles each of the three front-end columns holds.
+const articlesPerColumn = 4
 
-	filters := make([]interface{}, 0)
-	filters2 := make([]interface{}, 0)
-	filters = append(filters, "type", "original")
-	r1, total := models.BlogGetList(1, 4, filters...)
-	r2, _ := models.BlogGetList(2, 4, filters...)
-	r3, _ := models.BlogGetList(3, 4, filters...)
-	fmt.Println(r2)
-	fmt.Println(r3)
-	banners, _ := models.BannerGetList(1, 4, filters2...)
+// articlesPerPage is the number of articles shown on one home/archive page.
+const articlesPerPage = articlesPerColumn * 3
+
+func (c *MainController) Get() {
+	// Only original-type articles that are publicly visible reach the home page.
+	r1, total := models.BlogGetPublicList(1, articlesPerColumn, "type", "original")
+	r2, _ := models.BlogGetPublicList(2, articlesPerColumn, "type", "original")
+	r3, _ := models.BlogGetPublicList(3, articlesPerColumn, "type", "original")
+	banners, _ := models.BannerGetList(1, 4)
 	c.Data["List1"] = r1
 	c.Data["List2"] = r2
 	c.Data["List3"] = r3
@@ -35,46 +35,42 @@ func (c *MainController) Get() {
 
 func (c *MainController) Archive() {
 	page, _ := c.GetInt("page")
-	if page == 0 {
+	if page < 1 {
 		page = 1
 	}
-	filters := make([]interface{}, 0)
-	r1, total := models.BlogGetList(page*3-2, 4, filters...)
-	r2, _ := models.BlogGetList(page*3-1, 4, filters...)
-	r3, _ := models.BlogGetList(page*3, 4, filters...)
-	fmt.Println(r2)
-	fmt.Println(r3)
-	pages := (int)(math.Ceil(float64(total) / float64(12)))
-	filters2 := make([]interface{}, 0)
+	// Every column is restricted to publicly visible articles, and the page total
+	// is taken from the same query so the pagination never lists empty pages.
+	r1, total := models.BlogGetPublicList(page*3-2, articlesPerColumn)
+	r2, _ := models.BlogGetPublicList(page*3-1, articlesPerColumn)
+	r3, _ := models.BlogGetPublicList(page*3, articlesPerColumn)
+	pages := int(math.Ceil(float64(total) / float64(articlesPerPage)))
+	pageLinks := make([]interface{}, 0, pages)
 	for a := 1; a <= pages; a++ {
-		var tempStr = "<a href=\"/archive?page=" + strconv.Itoa(a) + "\">" + strconv.Itoa(a) + "</a>"
-		filters2 = append(filters2, html.HTML(tempStr))
+		link := "<a href=\"/archive?page=" + strconv.Itoa(a) + "\">" + strconv.Itoa(a) + "</a>"
+		pageLinks = append(pageLinks, html.HTML(link))
 	}
-	fmt.Println(filters2)
-	c.Data["Pages"] = filters2
+	c.Data["Pages"] = pageLinks
 	c.Data["List1"] = r1
 	c.Data["List2"] = r2
 	c.Data["List3"] = r3
 	c.Data["Total"] = total
-
 	c.TplName = "portals/archive.html"
 }
 
 func (main *MainController) Single() {
-	id, _ := main.GetInt("id")
-	if id == 0 {
+	id, err := main.GetInt("id")
+	if err != nil || id <= 0 {
 		main.Redirect(beego.URLFor("MainController.Archive"), 302)
-		main.StopRun()
+		return
 	}
-	blog, err := models.GetBlogById(id)
+	blog, err := models.GetPublicBlogById(id)
 	if err != nil {
+		// Missing, non-public or otherwise unavailable article: send the visitor
+		// back to the archive instead of rendering an empty page.
 		main.Redirect(beego.URLFor("MainController.Archive"), 302)
-		main.StopRun()
+		return
 	}
-	filters := make([]interface{}, 0)
-	filters = append(filters, "catalogid", blog.Catalogid)
-	r1, _ := models.BlogGetList(1, 3, filters...)
-	main.Data["Related"] = r1
+	main.Data["Related"] = models.BlogGetRelated(blog.Catalogid, blog.Id, 3)
 	main.Data["Blog"] = blog
 	main.TplName = "portals/single.html"
 }
