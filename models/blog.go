@@ -57,6 +57,34 @@ func BlogAdd(a *Blog) (int64, error) {
 	return orm.NewOrm().Insert(a)
 }
 
+// PublicBlogBaseFilters returns the base filter conditions for publicly visible blogs.
+// Only articles with status="public" should be visible on the front-end.
+func PublicBlogBaseFilters() []interface{} {
+	return []interface{}{"status", "public"}
+}
+
+// MergeFilters merges multiple filter slices into one.
+func MergeFilters(filterSets ...[]interface{}) []interface{} {
+	merged := make([]interface{}, 0)
+	for _, fs := range filterSets {
+		merged = append(merged, fs...)
+	}
+	return merged
+}
+
+// GetPublicBlogById returns a blog only if it exists and is publicly visible.
+func GetPublicBlogById(id int) (*Blog, error) {
+	a := new(Blog)
+	err := orm.NewOrm().QueryTable(TableName("blog")).
+		Filter("id", id).
+		Filter("status", "public").
+		One(a)
+	if err != nil {
+		return nil, err
+	}
+	return a, nil
+}
+
 func (a *Blog) Update(fields ...string) error {
 	if _, err := orm.NewOrm().Update(a, fields...); err != nil {
 		return err
