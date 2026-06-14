@@ -1,3 +1,5 @@
+//go:build ignore
+
 /*
  * jQuery File Upload Plugin GAE Go Example 3.0
  * https://github.com/blueimp/jQuery-File-Upload

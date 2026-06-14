@@ -17,6 +17,9 @@ func (a *Banner) TableName() string {
 }
 
 func GetBannerById(id int) (*Banner, error) {
+	if getBannerByIdFunc != nil {
+		return getBannerByIdFunc(id)
+	}
 	banner := new(Banner)
 	err := orm.NewOrm().QueryTable(TableName("banner")).Filter("id", id).One(banner)
 	if err != nil {
@@ -24,6 +27,14 @@ func GetBannerById(id int) (*Banner, error) {
 	}
 	return banner, err
 
+}
+
+// getBannerByIdFunc 仅供测试注入使用，生产环境为 nil
+var getBannerByIdFunc func(int) (*Banner, error)
+
+// SetGetBannerByIdFunc 用于测试时替换 GetBannerById 行为，传 nil 恢复默认
+func SetGetBannerByIdFunc(f func(int) (*Banner, error)) {
+	getBannerByIdFunc = f
 }
 
 func BannerGetList(page, pageSize int, filters ...interface{}) ([]*Banner, int64) {

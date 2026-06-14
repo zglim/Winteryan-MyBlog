@@ -28,12 +28,23 @@ func (a *Blog) TableName() string {
 }
 
 func GetBlogById(id int) (*Blog, error) {
+	if getBlogByIdFunc != nil {
+		return getBlogByIdFunc(id)
+	}
 	a := new(Blog)
 	err := orm.NewOrm().QueryTable(TableName("blog")).Filter("id", id).One(a)
 	if err != nil {
 		return nil, err
 	}
 	return a, nil
+}
+
+// getBlogByIdFunc 仅供测试注入使用，生产环境为 nil
+var getBlogByIdFunc func(int) (*Blog, error)
+
+// SetGetBlogByIdFunc 用于测试时替换 GetBlogById 行为，传 nil 恢复默认
+func SetGetBlogByIdFunc(f func(int) (*Blog, error)) {
+	getBlogByIdFunc = f
 }
 
 func BlogGetList(page, pageSize int, filters ...interface{}) ([]*Blog, int64) {

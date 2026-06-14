@@ -16,7 +16,11 @@ func (c *BannerController) Index() {
 	if id == 0 {
 		id = 1
 	}
-	banner, _ := models.GetBannerById(id)
+	bannerURL := beego.URLFor("BackstageController.Index")
+	banner, ok := c.validateAndLoadBanner(id, bannerURL)
+	if !ok {
+		return
+	}
 	c.Data["Id"] = id
 	c.Data["banner"] = banner
 	c.TplName = "backstage/banner.html"
@@ -26,7 +30,11 @@ func (c *BannerController) Update() {
 	newbanner := new(models.Banner)
 	id, _ := c.GetInt("id")
 	flash := beego.NewFlash()
-	oldBanner, _ := models.GetBannerById(id)
+	bannerURL := beego.URLFor("BackstageController.Index")
+	oldBanner, ok := c.validateAndLoadBanner(id, bannerURL)
+	if !ok {
+		return
+	}
 	newbanner.Id = id
 	newbanner.Title = c.GetString("title")
 	newbanner.Subtitle = c.GetString("subtitle")
@@ -39,7 +47,7 @@ func (c *BannerController) Update() {
 		if oldBanner.Imgurl != newbanner.Imgurl {
 			err1 := c.SaveToFile("images", "static/upload/"+image.Filename) // 保存位置在 static/upload, 没有文件夹要先创建
 			if err1 != nil {
-				flash.Error("更新Banner失败！原因：" + err1.Error())
+				flash.Error("%s", "更新Banner失败！原因："+err1.Error())
 				flash.Store(&c.Controller)
 				c.Data["banner"] = oldBanner
 				c.TplName = "backstage/banner.html"
@@ -51,14 +59,14 @@ func (c *BannerController) Update() {
 		newbanner.Imgurl = oldBanner.Imgurl
 	}
 	if err := newbanner.Update(); err != nil {
-		flash.Error("更新Banner失败！原因：" + err.Error())
+		flash.Error("%s", "更新Banner失败！原因："+err.Error())
 		flash.Store(&c.Controller)
 		c.Data["banner"] = oldBanner
 		c.TplName = "backstage/banner.html"
 		return
 	}
 
-	flash.Error("更新成功！")
+	flash.Error("%s", "更新成功！")
 	flash.Store(&c.Controller)
 	c.Data["banner"] = newbanner
 	c.TplName = "backstage/banner.html"

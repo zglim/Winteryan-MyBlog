@@ -85,3 +85,39 @@ func (self *BaseController) isPost() bool {
 func (self *BaseController) isGet() bool {
 	return self.Ctx.Request.Method == "GET"
 }
+
+// flashAndRedirect 存储 flash 消息并重定向，然后终止当前请求
+func (self *BaseController) flashAndRedirect(msg, url string) {
+	flash := beego.NewFlash()
+	flash.Error("%s", msg)
+	flash.Store(&self.Controller)
+	self.redirect(url)
+}
+
+// validateAndLoadBlog 校验 id 合法性并加载 Blog 记录；失败时自动 flash + redirect，返回 nil, false
+func (self *BaseController) validateAndLoadBlog(id int, redirectURL string) (*models.Blog, bool) {
+	if id <= 0 {
+		self.flashAndRedirect("文章ID无效", redirectURL)
+		return nil, false
+	}
+	blog, err := models.GetBlogById(id)
+	if err != nil || blog == nil {
+		self.flashAndRedirect("文章不存在或已被删除", redirectURL)
+		return nil, false
+	}
+	return blog, true
+}
+
+// validateAndLoadBanner 校验 id 合法性并加载 Banner 记录；失败时自动 flash + redirect，返回 nil, false
+func (self *BaseController) validateAndLoadBanner(id int, redirectURL string) (*models.Banner, bool) {
+	if id <= 0 {
+		self.flashAndRedirect("Banner ID无效", redirectURL)
+		return nil, false
+	}
+	banner, err := models.GetBannerById(id)
+	if err != nil || banner == nil {
+		self.flashAndRedirect("Banner不存在或已被删除", redirectURL)
+		return nil, false
+	}
+	return banner, true
+}

@@ -30,7 +30,7 @@ func (c *AddarticleController) Add() {
 		Blog.Auth = strings.TrimSpace(c.GetString("auth"))
 		file, image, err := c.GetFile("images")
 		if err != nil {
-			flash.Error("保存Blog失败！原因：" + err.Error())
+			flash.Error("%s", "保存Blog失败！原因："+err.Error())
 			flash.Store(&c.Controller)
 			c.redirect(beego.URLFor("AddarticleController.Add"))
 			return
@@ -43,18 +43,18 @@ func (c *AddarticleController) Add() {
 		Blog.Createtime = time.Now()
 		err1 := c.SaveToFile("images", "static/upload/"+image.Filename) // 保存位置在 static/upload, 没有文件夹要先创建
 		if err1 != nil {
-			flash.Error("保存Blog失败！原因：" + err1.Error())
+			flash.Error("%s", "保存Blog失败！原因："+err1.Error())
 			flash.Store(&c.Controller)
 			c.redirect(beego.URLFor("AddarticleController.Add"))
 			return
 		}
 		if _, err := models.BlogAdd(Blog); err != nil {
-			flash.Error("保存Blog失败！原因：" + err.Error())
+			flash.Error("%s", "保存Blog失败！原因："+err.Error())
 			flash.Store(&c.Controller)
 			c.redirect(beego.URLFor("AddarticleController.Add"))
 			return
 		}
-		flash.Error("保存成功！")
+		flash.Error("%s", "保存成功！")
 		flash.Store(&c.Controller)
 		c.redirect(beego.URLFor("AddarticleController.Add"))
 		return
@@ -81,10 +81,14 @@ func (c *AddarticleController) List() {
 }
 
 func (c *AddarticleController) Update() {
+	listURL := beego.URLFor("AddarticleController.List")
+
 	if c.isGet() {
 		id, _ := c.GetInt("id")
-		fmt.Println(id)
-		blog, _ := models.GetBlogById(id)
+		blog, ok := c.validateAndLoadBlog(id, listURL)
+		if !ok {
+			return
+		}
 		c.Data["blog"] = blog
 		c.TplName = "backstage/addarticle.html"
 	}
@@ -92,7 +96,10 @@ func (c *AddarticleController) Update() {
 		Blog := new(models.Blog)
 		id, _ := c.GetInt("id")
 		flash := beego.NewFlash()
-		oldblog, _ := models.GetBlogById(id)
+		oldblog, ok := c.validateAndLoadBlog(id, listURL)
+		if !ok {
+			return
+		}
 		Blog.Id = id
 		Blog.Auth = c.GetString("auth")
 		Blog.Catalogid = c.GetString("catalogid")
@@ -112,7 +119,7 @@ func (c *AddarticleController) Update() {
 			if oldblog.Imgurl != Blog.Imgurl {
 				err1 := c.SaveToFile("images", "static/upload/"+image.Filename) // 保存位置在 static/upload, 没有文件夹要先创建
 				if err1 != nil {
-					flash.Error("更新Blog失败！原因：" + err1.Error())
+					flash.Error("%s", "更新Blog失败！原因："+err1.Error())
 					flash.Store(&c.Controller)
 					c.Data["blog"] = oldblog
 					c.TplName = "backstage/addarticle.html"
@@ -124,17 +131,21 @@ func (c *AddarticleController) Update() {
 			Blog.Imgurl = oldblog.Imgurl
 		}
 		if err := Blog.Update(); err != nil {
-			flash.Error("更新Blog失败！原因：" + err.Error())
+			flash.Error("%s", "更新Blog失败！原因："+err.Error())
 			flash.Store(&c.Controller)
 			c.Data["blog"] = oldblog
 			c.TplName = "backstage/addarticle.html"
 			return
 		}
 
-		flash.Error("更新成功！")
+		flash.Error("%s", "更新成功！")
 		flash.Store(&c.Controller)
-		newblog, _ := models.GetBlogById(id)
-		c.Data["blog"] = newblog
+		newblog, err := models.GetBlogById(id)
+		if err != nil || newblog == nil {
+			c.Data["blog"] = Blog
+		} else {
+			c.Data["blog"] = newblog
+		}
 		c.Data["flag"] = "1"
 		c.TplName = "backstage/addarticle.html"
 		return
@@ -143,26 +154,32 @@ func (c *AddarticleController) Update() {
 }
 func (c *AddarticleController) Look() {
 	id, _ := c.GetInt("id")
-	fmt.Println(id)
-	blog, _ := models.GetBlogById(id)
+	listURL := beego.URLFor("AddarticleController.List")
+	blog, ok := c.validateAndLoadBlog(id, listURL)
+	if !ok {
+		return
+	}
 	c.Data["blog"] = blog
 	c.Data["flag"] = "1"
 	c.TplName = "backstage/addarticle.html"
-
 }
 func (c *AddarticleController) Delete() {
 	id, _ := c.GetInt("id")
-	fmt.Println(id)
+	listURL := beego.URLFor("AddarticleController.List")
+	blog, ok := c.validateAndLoadBlog(id, listURL)
+	if !ok {
+		return
+	}
 	flash := beego.NewFlash()
-	blog, _ := models.GetBlogById(id)
 	blog.Status = "private"
 	err := blog.Update()
 	if err != nil {
-		flash.Error("修改失败！原因：" + err.Error())
+		flash.Error("%s", "修改失败！原因："+err.Error())
 		flash.Store(&c.Controller)
-		c.redirect(beego.URLFor("AddarticleController.List"))
+		c.redirect(listURL)
+		return
 	}
-	flash.Error("修改成功！")
+	flash.Error("%s", "修改成功！")
 	flash.Store(&c.Controller)
-	c.redirect(beego.URLFor("AddarticleController.List"))
+	c.redirect(listURL)
 }
