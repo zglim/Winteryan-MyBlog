@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"hello/libs"
 	"hello/models"
 	html "html/template"
 	"math"
@@ -28,26 +29,24 @@ func (c *AddarticleController) Add() {
 		Blog.Type = strings.TrimSpace(c.GetString("type"))
 		Blog.Status = strings.TrimSpace(c.GetString("status"))
 		Blog.Auth = strings.TrimSpace(c.GetString("auth"))
-		file, image, err := c.GetFile("images")
+		Blog.Introduction = strings.TrimSpace(c.GetString("introduction"))
+		Blog.Content = strings.TrimSpace(c.GetString("content"))
+		Blog.Lastupdate = time.Now()
+		Blog.Createtime = time.Now()
+		savedPath, changed, err := c.saveUploadImage("images")
 		if err != nil {
 			flash.Error("保存Blog失败！原因：" + err.Error())
 			flash.Store(&c.Controller)
 			c.redirect(beego.URLFor("AddarticleController.Add"))
 			return
 		}
-		defer file.Close()
-		Blog.Imgurl = "static/upload/" + image.Filename
-		Blog.Introduction = strings.TrimSpace(c.GetString("introduction"))
-		Blog.Content = strings.TrimSpace(c.GetString("content"))
-		Blog.Lastupdate = time.Now()
-		Blog.Createtime = time.Now()
-		err1 := c.SaveToFile("images", "static/upload/"+image.Filename) // 保存位置在 static/upload, 没有文件夹要先创建
-		if err1 != nil {
-			flash.Error("保存Blog失败！原因：" + err1.Error())
+		if !changed {
+			flash.Error("保存Blog失败！原因：请上传封面图片")
 			flash.Store(&c.Controller)
 			c.redirect(beego.URLFor("AddarticleController.Add"))
 			return
 		}
+		Blog.Imgurl = savedPath
 		if _, err := models.BlogAdd(Blog); err != nil {
 			flash.Error("保存Blog失败！原因：" + err.Error())
 			flash.Store(&c.Controller)
@@ -104,25 +103,15 @@ func (c *AddarticleController) Update() {
 		Blog.Subject = c.GetString("subject")
 		Blog.Title = c.GetString("title")
 		Blog.Type = c.GetString("type")
-		file, image, err := c.GetFile("images")
-		if err == nil {
-			defer file.Close()
-			Blog.Imgurl = "static/upload/" + image.Filename
-			fmt.Println(Blog.Imgurl, oldblog.Imgurl)
-			if oldblog.Imgurl != Blog.Imgurl {
-				err1 := c.SaveToFile("images", "static/upload/"+image.Filename) // 保存位置在 static/upload, 没有文件夹要先创建
-				if err1 != nil {
-					flash.Error("更新Blog失败！原因：" + err1.Error())
-					flash.Store(&c.Controller)
-					c.Data["blog"] = oldblog
-					c.TplName = "backstage/addarticle.html"
-					return
-				}
-			}
-
-		} else {
-			Blog.Imgurl = oldblog.Imgurl
+		savedPath, changed, err := c.saveUploadImage("images")
+		if err != nil {
+			flash.Error("更新Blog失败！原因：" + err.Error())
+			flash.Store(&c.Controller)
+			c.Data["blog"] = oldblog
+			c.TplName = "backstage/addarticle.html"
+			return
 		}
+		Blog.Imgurl = libs.ResolveImageURL(oldblog.Imgurl, savedPath, changed)
 		if err := Blog.Update(); err != nil {
 			flash.Error("更新Blog失败！原因：" + err.Error())
 			flash.Store(&c.Controller)

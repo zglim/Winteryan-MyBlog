@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"fmt"
+	"hello/libs"
 	"hello/models"
 
 	"github.com/astaxie/beego"
@@ -31,25 +31,15 @@ func (c *BannerController) Update() {
 	newbanner.Title = c.GetString("title")
 	newbanner.Subtitle = c.GetString("subtitle")
 	newbanner.Url = c.GetString("url")
-	file, image, err := c.GetFile("images")
-	if err == nil {
-		defer file.Close()
-		newbanner.Imgurl = "static/upload/" + image.Filename
-		fmt.Println(newbanner.Imgurl, oldBanner.Imgurl)
-		if oldBanner.Imgurl != newbanner.Imgurl {
-			err1 := c.SaveToFile("images", "static/upload/"+image.Filename) // 保存位置在 static/upload, 没有文件夹要先创建
-			if err1 != nil {
-				flash.Error("更新Banner失败！原因：" + err1.Error())
-				flash.Store(&c.Controller)
-				c.Data["banner"] = oldBanner
-				c.TplName = "backstage/banner.html"
-				return
-			}
-		}
-
-	} else {
-		newbanner.Imgurl = oldBanner.Imgurl
+	savedPath, changed, err := c.saveUploadImage("images")
+	if err != nil {
+		flash.Error("更新Banner失败！原因：" + err.Error())
+		flash.Store(&c.Controller)
+		c.Data["banner"] = oldBanner
+		c.TplName = "backstage/banner.html"
+		return
 	}
+	newbanner.Imgurl = libs.ResolveImageURL(oldBanner.Imgurl, savedPath, changed)
 	if err := newbanner.Update(); err != nil {
 		flash.Error("更新Banner失败！原因：" + err.Error())
 		flash.Store(&c.Controller)
