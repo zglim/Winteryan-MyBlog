@@ -3,7 +3,6 @@ package controllers
 import (
 	"fmt"
 	"hello/models"
-	html "html/template"
 	"math"
 	"strconv"
 	"strings"
@@ -62,21 +61,135 @@ func (c *AddarticleController) Add() {
 	}
 	c.TplName = "backstage/addarticle.html"
 }
+
+const articlePageSize = 10
+
+// articleRow wraps a Blog together with the fully-resolved operation URLs so
+// the template can render real links without relying on client-side scripts.
+type articleRow struct {
+	*models.Blog
+	LookURL   string
+	EditURL   string
+	DeleteURL string
+}
+
+// pageLink is a single numbered entry in the pagination bar.
+type pageLink struct {
+	Num    int
+	URL    string
+	Active bool
+}
+
+// pagination holds everything the template needs to render the pager,
+// including the previous/next controls and their enabled state.
+type pagination struct {
+	Items      []pageLink
+	HasPrev    bool
+	PrevURL    string
+	HasNext    bool
+	NextURL    string
+	Current    int
+	TotalPages int
+}
+
+// articleActionURL builds the server-side URL for a per-row operation so the
+// view, edit and delete buttons work even when JavaScript is disabled.
+func articleActionURL(action string, id int) string {
+	var path string
+	switch action {
+	case "look":
+		path = "/lookArticle"
+	case "update":
+		path = "/updateArticle"
+	case "delete":
+		path = "/deleteArticle"
+	default:
+		path = "/listArticle"
+	}
+	return path + "?id=" + strconv.Itoa(id)
+}
+
+// articlePageURL builds the URL for a given page of the list.
+func articlePageURL(page int) string {
+	return "/listArticle?page=" + strconv.Itoa(page)
+}
+
+// normalizePage clamps a requested page into the valid [1, totalPages] range so
+// missing, zero, negative or out-of-range page values all resolve to a real
+// page instead of producing a negative offset or an empty first page.
+func normalizePage(page, totalPages int) int {
+	if totalPages < 1 {
+		totalPages = 1
+	}
+	if page < 1 {
+		return 1
+	}
+	if page > totalPages {
+		return totalPages
+	}
+	return page
+}
+
+// buildPagination assembles the pager for the given current page, wiring up the
+// previous/next links and the active highlight. The current page is clamped so
+// the first/last boundaries are always handled correctly.
+func buildPagination(current, totalPages int) pagination {
+	if totalPages < 1 {
+		totalPages = 1
+	}
+	current = normalizePage(current, totalPages)
+
+	p := pagination{
+		Current:    current,
+		TotalPages: totalPages,
+		HasPrev:    current > 1,
+		HasNext:    current < totalPages,
+	}
+	if p.HasPrev {
+		p.PrevURL = articlePageURL(current - 1)
+	}
+	if p.HasNext {
+		p.NextURL = articlePageURL(current + 1)
+	}
+	items := make([]pageLink, 0, totalPages)
+	for i := 1; i <= totalPages; i++ {
+		items = append(items, pageLink{
+			Num:    i,
+			URL:    articlePageURL(i),
+			Active: i == current,
+		})
+	}
+	p.Items = items
+	return p
+}
+
 func (c *AddarticleController) List() {
 	page, _ := strconv.Atoi(strings.TrimSpace(c.GetString("page")))
-	//	fmt.Println(page + "+++++++++++++++++++++++++++")
-	filters := make([]interface{}, 0)
-	r1, total := models.BlogGetList(page, 10, filters...)
-	c.Data["List"] = r1
-	pages := (int)(math.Ceil(float64(total) / float64(10)))
-	fmt.Println(pages)
-	filters2 := make([]interface{}, 0)
-	for a := 1; a <= pages; a++ {
-		var tempStr = "<a href=\"/listArticle?page=" + strconv.Itoa(a) + "\">" + strconv.Itoa(a) + "</a>"
-		filters2 = append(filters2, html.HTML(tempStr))
+	if page < 1 {
+		page = 1
 	}
-	fmt.Println(filters2)
-	c.Data["Pages"] = filters2
+	filters := make([]interface{}, 0)
+	list, total := models.BlogGetList(page, articlePageSize, filters...)
+	totalPages := int(math.Ceil(float64(total) / float64(articlePageSize)))
+	if totalPages < 1 {
+		totalPages = 1
+	}
+	if page > totalPages {
+		page = totalPages
+		list, _ = models.BlogGetList(page, articlePageSize, filters...)
+	}
+
+	rows := make([]articleRow, 0, len(list))
+	for _, b := range list {
+		rows = append(rows, articleRow{
+			Blog:      b,
+			LookURL:   articleActionURL("look", b.Id),
+			EditURL:   articleActionURL("update", b.Id),
+			DeleteURL: articleActionURL("delete", b.Id),
+		})
+	}
+	c.Data["List"] = rows
+	c.Data["Pagination"] = buildPagination(page, totalPages)
 	c.TplName = "backstage/listarticle.html"
 }
 
